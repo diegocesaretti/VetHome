@@ -51,7 +51,10 @@ const App: React.FC = () => {
   // Viewport resize handler for mobile keyboard
   useEffect(() => {
     const handleResize = () => {
+      // Force immediate scroll to bottom when viewport changes (keyboard opens/closes)
       scrollToBottom('auto');
+      
+      // Ensure input stays in view
       if (document.activeElement === inputRef.current) {
         setTimeout(() => {
             inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -134,7 +137,7 @@ const App: React.FC = () => {
       {/* 
         Flex Column Layout:
         - Header (Fixed height)
-        - Chat (Flex-1, takes remaining space)
+        - Chat (Flex-1, takes remaining space, shrinks when footer grows)
         - Footer (Content based height)
       */}
       <div className="w-full h-full md:max-w-md md:h-[90vh] bg-white md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden relative border border-gray-100 ring-1 ring-black/5">
