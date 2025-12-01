@@ -12,13 +12,12 @@ const App: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [triageData, setTriageData] = useState<TriageData | null>(null);
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Initialize Chat
   useEffect(() => {
     initializeChat();
-    // Add initial greeting after a short delay
     setTimeout(() => {
       setMessages([
         {
@@ -31,17 +30,49 @@ const App: React.FC = () => {
     }, 600);
   }, []);
 
-  // Auto-scroll to bottom
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    if (chatContainerRef.current) {
+      const container = chatContainerRef.current;
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior
+      });
+    }
+  };
+
+  // Scroll logic updates
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
+    // Delay to allow layout recalculation (especially when ActionPanel appears)
+    const timeoutId = setTimeout(() => scrollToBottom(), 150);
+    return () => clearTimeout(timeoutId);
   }, [messages, isTyping, triageData]);
 
-  // Focus input on load and after sending
+  // Viewport resize handler for mobile keyboard
   useEffect(() => {
-    if (!triageData) {
-      inputRef.current?.focus();
+    const handleResize = () => {
+      scrollToBottom('auto');
+      if (document.activeElement === inputRef.current) {
+        setTimeout(() => {
+            inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
     }
-  }, [messages, triageData]);
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -58,6 +89,8 @@ const App: React.FC = () => {
     setMessages((prev) => [...prev, userMsg]);
     setInputValue('');
     setIsTyping(true);
+    
+    setTimeout(() => scrollToBottom('smooth'), 50);
 
     try {
       const { visibleMessage, triageData: resultData } = await sendMessageToGemini(userMsg.text);
@@ -98,11 +131,16 @@ const App: React.FC = () => {
 
   return (
     <div className="flex justify-center items-center h-full bg-[#f0f2f5] font-sans">
-      {/* Mobile-first Container */}
+      {/* 
+        Flex Column Layout:
+        - Header (Fixed height)
+        - Chat (Flex-1, takes remaining space)
+        - Footer (Content based height)
+      */}
       <div className="w-full h-full md:max-w-md md:h-[90vh] bg-white md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden relative border border-gray-100 ring-1 ring-black/5">
         
-        {/* Modern Glass Header */}
-        <div className="absolute top-0 w-full z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 p-4 flex items-center justify-between transition-all">
+        {/* Header - Flex Shrink 0 */}
+        <div className="shrink-0 w-full z-30 bg-white/80 backdrop-blur-md border-b border-gray-100 p-4 flex items-center justify-between transition-all">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-br from-indigo-500 to-purple-600 w-10 h-10 rounded-full flex items-center justify-center shadow-md shadow-indigo-200 text-white">
                <i className="fa-solid fa-paw text-lg"></i>
@@ -124,8 +162,11 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto pt-24 pb-36 px-4 bg-gray-50 scrollbar-hide">
+        {/* Chat Area - Flex 1 (Grows/Shrinks) */}
+        <div 
+            ref={chatContainerRef}
+            className="flex-1 overflow-y-auto p-4 bg-gray-50 scrollbar-hide overscroll-contain"
+        >
           <div className="space-y-6">
             <div className="text-center text-xs text-gray-400 font-medium my-4">Hoy</div>
             {messages.map((msg) => (
@@ -133,38 +174,38 @@ const App: React.FC = () => {
             ))}
             {isTyping && <TypingIndicator />}
           </div>
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Bottom Area */}
-        <div className="absolute bottom-0 w-full z-20">
-          {/* Gradient Fade */}
-          <div className="h-8 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+        {/* Footer Area - Flex Shrink 0 (Auto height) */}
+        <div className="shrink-0 w-full z-20 bg-white border-t border-gray-100 relative">
+          {/* Gradient shadow for depth effect pointing up */}
+          <div className="absolute bottom-full left-0 w-full h-6 bg-gradient-to-t from-black/5 to-transparent pointer-events-none opacity-40"></div>
           
-          <div className="bg-white p-4 pb-6 md:pb-4 border-t border-gray-100">
-          {!triageData ? (
-            <form onSubmit={handleSendMessage} className="flex gap-2 items-center relative">
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                disabled={isTyping}
-                className="w-full bg-gray-100 text-gray-700 border-0 rounded-2xl pl-5 pr-14 py-4 focus:ring-2 focus:ring-indigo-100 focus:bg-white transition-all outline-none placeholder-gray-400 text-[16px] shadow-inner"
-                placeholder="Escribe un mensaje..."
-                autoComplete="off"
-              />
-              <button
-                type="submit"
-                disabled={!inputValue.trim() || isTyping}
-                className="absolute right-2 top-2 bottom-2 bg-indigo-600 text-white w-10 h-10 rounded-xl shadow-md hover:bg-indigo-700 hover:shadow-indigo-200 transition-all flex items-center justify-center disabled:opacity-0 disabled:scale-75 transform duration-200"
-              >
-                <i className="fa-solid fa-arrow-up text-sm"></i>
-              </button>
-            </form>
-          ) : (
-            <ActionPanel data={triageData} />
-          )}
+          <div className="p-4 pb-6 md:pb-4">
+            {!triageData ? (
+              <form onSubmit={handleSendMessage} className="flex gap-2 items-center relative">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onFocus={() => setTimeout(() => scrollToBottom('smooth'), 300)}
+                  disabled={isTyping}
+                  className="w-full bg-gray-100 text-gray-700 border-0 rounded-2xl pl-5 pr-14 py-4 focus:ring-2 focus:ring-indigo-100 focus:bg-white transition-all outline-none placeholder-gray-400 text-[16px] shadow-inner"
+                  placeholder="Escribe un mensaje..."
+                  autoComplete="off"
+                />
+                <button
+                  type="submit"
+                  disabled={!inputValue.trim() || isTyping}
+                  className="absolute right-2 top-2 bottom-2 bg-indigo-600 text-white w-10 h-10 rounded-xl shadow-md hover:bg-indigo-700 hover:shadow-indigo-200 transition-all flex items-center justify-center disabled:opacity-0 disabled:scale-75 transform duration-200"
+                >
+                  <i className="fa-solid fa-arrow-up text-sm"></i>
+                </button>
+              </form>
+            ) : (
+              <ActionPanel data={triageData} />
+            )}
           </div>
         </div>
       </div>

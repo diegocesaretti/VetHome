@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VetHome - Atención Veterinaria</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -15,6 +15,10 @@
         body { 
             font-family: 'Inter', sans-serif; 
             -webkit-tap-highlight-color: transparent;
+            height: 100vh; 
+            height: 100dvh; 
+            overflow: hidden; 
+            overscroll-behavior-y: none; /* Previene el rebote elástico en iOS */
         }
         /* Custom scrollbar hiding */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -50,7 +54,7 @@
 }
 </script>
 </head>
-<body class="bg-gray-100 h-screen w-screen overflow-hidden">
+<body class="bg-gray-100 w-screen">
     <div id="root" class="h-full w-full"></div>
 </body>
 </html>
