@@ -1,0 +1,5 @@
+{
+  "name": "VetHome AI",
+  "description": "An intelligent veterinary triage assistant that classifies urgency and facilitates booking or emergency contact.",
+  "requestFramePermissions": []
+}
